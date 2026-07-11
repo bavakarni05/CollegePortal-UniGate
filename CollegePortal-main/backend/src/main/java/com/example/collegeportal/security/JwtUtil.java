@@ -1,5 +1,8 @@
 package com.example.collegeportal.security;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 
 import javax.crypto.SecretKey;
@@ -21,9 +24,21 @@ public class JwtUtil {
     private final long expirationMs;
 
     public JwtUtil(@Value("${jwt.secret}") String secret, @Value("${jwt.expiration-ms}") long expirationMs) {
-        // in production use a stronger key management
-        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        String normalizedSecret = (secret == null || secret.isBlank())
+                ? "college-portal-default-jwt-secret-please-change-me"
+                : secret;
+        this.key = buildSigningKey(normalizedSecret);
         this.expirationMs = expirationMs;
+    }
+
+    private SecretKey buildSigningKey(String secret) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] keyBytes = digest.digest(secret.getBytes(StandardCharsets.UTF_8));
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
     }
 
     public String generateToken(Long userId, String role, String email) {
