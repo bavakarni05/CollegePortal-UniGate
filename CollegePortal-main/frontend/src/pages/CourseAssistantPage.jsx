@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE_URL } from '../config';
 
 export default function CourseAssistantPage() {
   const [messages, setMessages] = useState([]); // {role: 'user'|'assistant', text}
@@ -20,7 +21,7 @@ export default function CourseAssistantPage() {
       const payload = { query: userText };
       if (score) payload.score = Number(score);
       if (prefs) payload.preferences = prefs;
-      const res = await fetch('/api/assistant/query', {
+      const res = await fetch(`${API_BASE_URL}/assistant/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

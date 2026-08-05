@@ -9,6 +9,7 @@ import com.example.collegeportal.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -52,12 +53,23 @@ public class CourseAssistantController {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
-    private final String openaiKey = System.getenv("OPENAI_API_KEY");
-    private final String chatModel = "gpt-3.5-turbo";
+
+    @Value("${openai.api.key:${OPENAI_API_KEY:}}")
+    private String openaiKey;
+
+    @Value("${openai.model:${OPENAI_MODEL:gpt-4o-mini}}")
+    private String chatModel;
+
+    private String getEffectiveOpenaiKey() {
+        if (openaiKey != null && !openaiKey.isBlank()) return openaiKey.trim();
+        String envKey = System.getenv("OPENAI_API_KEY");
+        return envKey != null ? envKey.trim() : null;
+    }
 
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
-        boolean configured = openaiKey != null && !openaiKey.isBlank();
+        String key = getEffectiveOpenaiKey();
+        boolean configured = key != null && !key.isBlank();
         long collegeCount = collegeRepository.count();
         return ResponseEntity.ok(Map.of(
                 "ok", true,
@@ -152,7 +164,8 @@ public class CourseAssistantController {
  
             String userMessage = "User query: " + query + "\n" + "Please answer as a college assistant. Use the provided college profile details and student preferences. Provide comparisons, pros and cons, and recommended next steps when appropriate.";
 
-            if (openaiKey == null || openaiKey.isBlank()) {
+            String activeOpenaiKey = getEffectiveOpenaiKey();
+            if (activeOpenaiKey == null || activeOpenaiKey.isBlank()) {
                 StringBuilder fallback = new StringBuilder();
                 fallback.append("(No OpenAI key configured — returning simple college-based recommendations)\n\n");
                 fallback.append("Query: ").append(query).append("\n\n");
@@ -189,7 +202,7 @@ public class CourseAssistantController {
                     .uri(URI.create("https://api.openai.com/v1/chat/completions"))
                     .timeout(Duration.ofSeconds(30))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + openaiKey)
+                    .header("Authorization", "Bearer " + activeOpenaiKey)
                     .POST(HttpRequest.BodyPublishers.ofString(reqBody))
                     .build();
 
