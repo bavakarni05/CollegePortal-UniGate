@@ -19,6 +19,7 @@ import CollegeProfilePage from './pages/CollegeProfilePage';
 import CourseCatalogPage from './pages/CourseCatalogPage';
 import NotFoundPage from './pages/NotFoundPage';
 import SemanticSearchPage from './pages/SemanticSearchPage';
+import CourseAssistantPage from './pages/CourseAssistantPage';
 
 // Protected route component for student-only routes
 function StudentRoute({ element }) {
@@ -46,6 +47,7 @@ function AppRoutes() {
       {/* Public routes */}
       <Route path="/search" element={user?.role === 'COLLEGE' ? <Navigate to="/college-dashboard" /> : <CollegeSearchPage />} />
       <Route path="/semantic-search" element={<SemanticSearchPage />} />
+      <Route path="/assistant" element={<CourseAssistantPage />} />
       
       {/* Legacy Redirects to prevent "Page Not Found" */}
       <Route path="/dashboard" element={<Navigate to="/profile" replace />} />
