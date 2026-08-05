@@ -67,6 +67,28 @@ public class CourseAssistantController {
         ));
     }
 
+    // Debug endpoint to list colleges visible to the assistant (safe, returns limited fields)
+    @GetMapping("/colleges")
+    public ResponseEntity<Map<String, Object>> listColleges() {
+        try {
+            List<College> all = collegeRepository.findAll();
+            List<Map<String, Object>> out = all.stream().map(c -> Map.<String,Object>of(
+                    "id", c.getId(),
+                    "name", c.getName(),
+                    "city", c.getCity(),
+                    "state", c.getState(),
+                    "cutoff", c.getCutoff(),
+                    "minFee", c.getMinFee(),
+                    "maxFee", c.getMaxFee(),
+                    "placementPercentage", c.getPlacementPercentage()
+            )).collect(Collectors.toList());
+            return ResponseEntity.ok(Map.of("ok", true, "count", out.size(), "colleges", out));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("ok", false, "message", "Failed to list colleges: " + e.getMessage()));
+        }
+    }
+
     @PostMapping(value = "/query", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> handleQuery(@RequestBody Map<String, Object> body) {
         try {
