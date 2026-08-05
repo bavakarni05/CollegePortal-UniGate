@@ -32,7 +32,7 @@ export default function Navbar() {
 
         <div className="collapse navbar-collapse" id="navbarMain">
           <ul className="navbar-nav ms-auto mb-2 mb-lg-0 text-end">
-            {user && (user.role === 'COLLEGE' ? (
+            {user && user.role === 'COLLEGE' ? (
               <>
                 <li className="nav-item">
                   <Link className="nav-link px-3" to="/college-profile" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>College Profile</Link>
@@ -52,8 +52,14 @@ export default function Navbar() {
                 <li className="nav-item">
                   <Link className="nav-link px-3" to="/compare" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>Compare</Link>
                 </li>
+                <li className="nav-item">
+                  <Link className="nav-link px-3" to="/semantic-search" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>Semantic Search</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link px-3" to="/assistant" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>AI Assistant</Link>
+                </li>
               </>
-            ))}
+            )}
             {user?.role === 'STUDENT' && (
               <>
                 <li className="nav-item">
