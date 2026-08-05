@@ -43,8 +43,8 @@ export default function CourseAssistantPage() {
 
   return (
     <div className="container mt-5">
-      <h2>Course Assistant</h2>
-      <p className="text-muted">Ask questions, get course comparisons and personalized recommendations. Provide your score and preferences to improve recommendations.</p>
+      <h2>College Assistant</h2>
+      <p className="text-muted">Ask about colleges, compare profiles, and get pros and cons for each institution. Provide your score and preferences to tailor recommendations.</p>
 
       <div className="card p-3 mb-3">
         <div className="mb-2 row">
@@ -59,7 +59,7 @@ export default function CourseAssistantPage() {
         </div>
 
         <form onSubmit={sendQuery} className="d-flex gap-2">
-          <input className="form-input" value={input} onChange={e => setInput(e.target.value)} placeholder="Ask for course recommendations or compare courses" />
+          <input className="form-input" value={input} onChange={e => setInput(e.target.value)} placeholder="Ask about colleges or compare two institutions" />
           <button className="btn btn-primary" type="submit" disabled={loading}>{loading ? 'Thinking...' : 'Send'}</button>
         </form>
       </div>

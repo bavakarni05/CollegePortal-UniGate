@@ -56,7 +56,7 @@ export default function Navbar() {
                   <Link className="nav-link px-3" to="/semantic-search" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>Semantic Search</Link>
                 </li>
                 <li className="nav-item">
-                  <Link className="nav-link px-3" to="/assistant" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>AI Assistant</Link>
+                  <Link className="nav-link px-3" to="/assistant" onClick={closeNavbar} style={{ fontWeight: 500, color: 'var(--text-main)' }}>College Assistant</Link>
                 </li>
               </>
             )}
