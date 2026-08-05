@@ -25,11 +25,11 @@ export default function CourseAssistantPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      const text = await res.text();
       let j;
       try {
-        j = await res.json();
+        j = text ? JSON.parse(text) : null;
       } catch (parseErr) {
-        const text = await res.text();
         throw new Error(`Unexpected server response: ${text || res.statusText}`);
       }
       if (!j) {
