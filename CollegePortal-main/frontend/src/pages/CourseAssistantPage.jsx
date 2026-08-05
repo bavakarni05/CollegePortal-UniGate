@@ -25,7 +25,16 @@ export default function CourseAssistantPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const j = await res.json();
+      const text = await res.text();
+      let j;
+      try {
+        j = text ? JSON.parse(text) : null;
+      } catch (parseErr) {
+        throw new Error(`Unexpected server response: ${text || res.statusText}`);
+      }
+      if (!j) {
+        throw new Error(`Empty response from server (status ${res.status})`);
+      }
       if (j.ok) {
         const ans = j.answer || 'No answer returned';
         setMessages(prev => [...prev, { role: 'assistant', text: ans }]);
