@@ -197,7 +197,7 @@ public class CourseAssistantController {
             if (activeOpenaiKey.startsWith("gsk_")) {
                 apiUrl = "https://api.groq.com/openai/v1/chat/completions";
                 if (activeChatModel.equals("gpt-4o-mini") || activeChatModel.startsWith("gpt-")) {
-                    activeChatModel = "llama3-8b-8192";
+                    activeChatModel = "llama-3.1-8b-instant";
                 }
             }
 
