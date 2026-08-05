@@ -190,15 +190,26 @@ public class CourseAssistantController {
             if (context.length() > 0) messages.add(Map.of("role", "system", "content", context.toString()));
             messages.add(Map.of("role", "user", "content", userMessage));
 
+            String activeChatModel = chatModel;
+            String apiUrl = "https://api.openai.com/v1/chat/completions";
+            
+            // Automatically detect Groq API keys and adjust endpoint/model
+            if (activeOpenaiKey.startsWith("gsk_")) {
+                apiUrl = "https://api.groq.com/openai/v1/chat/completions";
+                if (activeChatModel.equals("gpt-4o-mini") || activeChatModel.startsWith("gpt-")) {
+                    activeChatModel = "llama3-8b-8192";
+                }
+            }
+
             Map<String, Object> req = Map.of(
-                    "model", chatModel,
+                    "model", activeChatModel,
                     "messages", messages,
                     "temperature", 0.2
             );
 
             String reqBody = mapper.writeValueAsString(req);
             HttpRequest httpReq = HttpRequest.newBuilder()
-                    .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+                    .uri(URI.create(apiUrl))
                     .timeout(Duration.ofSeconds(30))
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + activeOpenaiKey)
