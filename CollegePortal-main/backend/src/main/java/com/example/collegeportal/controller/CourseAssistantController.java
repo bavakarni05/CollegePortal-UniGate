@@ -34,7 +34,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@CrossOrigin(origins = "https://collegeportal-unigate.onrender.com", allowedHeaders = "*")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/assistant")
 public class CourseAssistantController {

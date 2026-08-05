@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
  
 @RestController
-@CrossOrigin(origins = "https://collegeportal-unigate.onrender.com", allowedHeaders = "*")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class HelloController {
 
     @GetMapping("/api/health")
