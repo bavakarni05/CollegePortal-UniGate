@@ -13,10 +13,13 @@ import com.cloudinary.utils.ObjectUtils;
 @Service
 public class CloudinaryService {
 
-    @Autowired
+    @Autowired(required = false)
     private Cloudinary cloudinary;
 
     public String uploadFile(MultipartFile file) throws IOException {
+        if (cloudinary == null) {
+            throw new IllegalStateException("Cloudinary is not configured. Set CLOUDINARY_URL to use file upload features.");
+        }
         // resource_type "auto" handles both PDF and images automatically
         Map uploadResult = cloudinary.uploader().upload(file.getBytes(), 
             ObjectUtils.asMap("resource_type", "auto"));
