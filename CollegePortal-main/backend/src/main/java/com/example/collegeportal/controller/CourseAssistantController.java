@@ -34,7 +34,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "https://collegeportal-unigate.onrender.com", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/assistant")
 public class CourseAssistantController {
@@ -101,7 +101,7 @@ public class CourseAssistantController {
         }
     }
 
-    @PostMapping(value = "/query", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping({"/query", "/assistant/query", ""})
     public ResponseEntity<Map<String, Object>> handleQuery(@RequestBody Map<String, Object> body) {
         try {
             String query = (String) body.getOrDefault("query", "");

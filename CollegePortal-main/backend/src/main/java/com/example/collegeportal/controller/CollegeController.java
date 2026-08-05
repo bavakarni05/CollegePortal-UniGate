@@ -57,6 +57,14 @@ public class CollegeController {
     @Autowired
     private CollegeService collegeService;
 
+    @Autowired
+    private CourseAssistantController courseAssistantController;
+
+    @PostMapping({"/assistant/query", "/assistant"})
+    public ResponseEntity<Map<String, Object>> handleAssistantQuery(@RequestBody Map<String, Object> body) {
+        return courseAssistantController.handleQuery(body);
+    }
+
     // Get current college profile
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(@RequestHeader("Authorization") String token) {

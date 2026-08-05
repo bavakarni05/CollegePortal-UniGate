@@ -21,11 +21,20 @@ export default function CourseAssistantPage() {
       const payload = { query: userText };
       if (score) payload.score = Number(score);
       if (prefs) payload.preferences = prefs;
-      const res = await fetch(`${API_BASE_URL}/assistant/query`, {
+
+      let res = await fetch(`${API_BASE_URL}/college/assistant/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      if (!res.ok || res.status === 404) {
+        res = await fetch(`${API_BASE_URL}/assistant/query`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
+
       const text = await res.text();
       let j;
       try {
