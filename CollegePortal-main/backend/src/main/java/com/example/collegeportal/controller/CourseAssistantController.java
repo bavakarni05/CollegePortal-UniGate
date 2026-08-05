@@ -24,11 +24,14 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -55,10 +58,12 @@ public class CourseAssistantController {
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getStatus() {
         boolean configured = openaiKey != null && !openaiKey.isBlank();
+        long collegeCount = collegeRepository.count();
         return ResponseEntity.ok(Map.of(
                 "ok", true,
                 "openaiConfigured", configured,
-                "useFallback", !configured
+                "useFallback", !configured,
+                "collegeCount", collegeCount
         ));
     }
 
@@ -94,13 +99,14 @@ public class CourseAssistantController {
             } catch (Exception e) {
                 // ignore retrieval failures; proceed without snippets
             }
-
+ 
             StringBuilder system = new StringBuilder();
-            system.append("You are a helpful college search assistant for students using a college portal. Focus on college profiles, location, fees, placements, accreditation, programs, eligibility and student preferences. When the user asks to compare colleges, provide a clear comparison with pros and cons for each institution, and indicate which college is a better fit for the student's goals. Use the provided structured college data and context snippets to answer accurately. Keep answers concise and student-friendly.\n");
-
+            system.append("You are a helpful college search assistant for students using a college portal. Use only the given college profile data and student preferences when answering. If you do not have enough verified information about a college, say so rather than guessing. When comparing colleges, give pros and cons for each college and recommend which is better for the student's goals.");
+            system.append("\nAlways answer as a college advisor for students exploring admissions, courses, placements, fees, and eligibility.\n");
+ 
             StringBuilder context = new StringBuilder();
             if (!profileText.isBlank()) {
-                context.append("Student profile:\n").append(profileText).append("\n");
+                context.append("Student profile:\n").append(profileText).append("\n\n");
             }
             if (!snippets.isEmpty()) {
                 context.append("Context snippets from uploaded materials:\n");
@@ -112,28 +118,17 @@ public class CourseAssistantController {
                 }
                 context.append("\n");
             }
-
-            String userMessage = "User query: " + query + "\n" + "Please answer as an assistant, focusing on colleges and their profiles. When relevant, recommend colleges and explain why they are a good fit for the student, including pros and cons. Also suggest next steps for the student to explore or apply.";
-
+ 
             List<College> collegeCandidates = pickCandidateColleges(body);
             if (!collegeCandidates.isEmpty()) {
-                context.append("Available college profiles:\n");
+                context.append("Available college profiles (use these exact details in your response):\n");
                 for (College c : collegeCandidates) {
-                    context.append(String.format("- %s | Location: %s, %s | Type: %s | Category: %s | Cutoff: %s | Fees: %s-%s | Placement: %s%% | Accreditation: %s | Eligibility: %s\n",
-                            c.getName(),
-                            c.getCity() == null ? c.getLocation() : c.getCity(),
-                            c.getState() == null ? "" : c.getState(),
-                            c.getType() == null ? "N/A" : c.getType(),
-                            c.getCategory() == null ? "N/A" : c.getCategory(),
-                            c.getCutoff() == null ? "N/A" : String.format("%.1f", c.getCutoff()),
-                            c.getMinFee() == null ? "N/A" : String.format("%.0f", c.getMinFee()),
-                            c.getMaxFee() == null ? "N/A" : String.format("%.0f", c.getMaxFee()),
-                            c.getPlacementPercentage() == null ? "N/A" : String.format("%.0f", c.getPlacementPercentage()),
-                            c.getAccreditation() == null ? "N/A" : c.getAccreditation(),
-                            c.getEligibilityCriteria() == null ? "N/A" : c.getEligibilityCriteria()));
+                    context.append(buildCollegeContext(c)).append("\n");
                 }
                 context.append("\n");
             }
+ 
+            String userMessage = "User query: " + query + "\n" + "Please answer as a college assistant. Use the provided college profile details and student preferences. Provide comparisons, pros and cons, and recommended next steps when appropriate.";
 
             if (openaiKey == null || openaiKey.isBlank()) {
                 StringBuilder fallback = new StringBuilder();
@@ -201,31 +196,136 @@ public class CourseAssistantController {
     }
 
     private List<College> pickCandidateColleges(Map<String, Object> body) {
-        Double score = null;
-        if (body.containsKey("score")) {
-            try {
-                score = Double.parseDouble(String.valueOf(body.get("score")));
-            } catch (Exception ignored) {
-            }
-        }
+       String query = String.valueOf(body.getOrDefault("query", "")).toLowerCase();
+       String preferences = String.valueOf(body.getOrDefault("preferences", "")).toLowerCase();
+       Double score = null;
+       if (body.containsKey("score")) {
+           try {
+               score = Double.parseDouble(String.valueOf(body.get("score")));
+           } catch (Exception ignored) {
+           }
+       }
+ 
+       List<College> all = collegeRepository.findAll();
+       if (all == null || all.isEmpty()) return List.of();
+ 
+       List<College> matched = new ArrayList<>();
+       matched.addAll(findCollegesByQueryTerms(query, all));
+ 
+       if (matched.isEmpty() && (!preferences.isBlank() || score != null)) {
+           for (College c : all) {
+               if (matchesPreferences(c, preferences, query) || (score != null && (c.getCutoff() == null || c.getCutoff() <= score))) {
+                   matched.add(c);
+               }
+           }
+       }
+ 
+       if (matched.isEmpty()) {
+           matched.addAll(all.stream()
+                   .sorted((a, b) -> {
+                       Double ca = a.getCutoff() == null ? -1.0 : a.getCutoff();
+                       Double cb = b.getCutoff() == null ? -1.0 : b.getCutoff();
+                       return Double.compare(cb, ca);
+                   })
+                   .limit(6)
+                   .collect(Collectors.toList()));
+       }
+ 
+       return matched.stream().distinct().limit(8).collect(Collectors.toList());
+   }
+ 
+   private List<College> findCollegesByQueryTerms(String query, List<College> all) {
+       if (query == null || query.isBlank()) return List.of();
+       String normalizedQuery = query.toLowerCase();
+       List<String> terms = Arrays.stream(normalizedQuery.split("\\W+"))
+               .filter(term -> !term.isBlank())
+               .toList();
+       if (terms.isEmpty()) return List.of();
 
-        List<College> all = collegeRepository.findAll();
-        if (all == null) return List.of();
-
-        List<College> filtered = new ArrayList<>(all);
-        if (score != null) {
-            List<College> tmp = new ArrayList<>();
-            for (College c : filtered) {
-                if (c.getCutoff() == null || c.getCutoff() <= score) tmp.add(c);
-            }
-            filtered = tmp;
-        }
-
-        filtered.sort((a, b) -> {
-            Double ca = a.getCutoff() == null ? -1.0 : a.getCutoff();
-            Double cb = b.getCutoff() == null ? -1.0 : b.getCutoff();
-            return Double.compare(cb, ca);
-        });
-        return filtered.stream().limit(8).collect(Collectors.toList());
-    }
+       List<College> results = new ArrayList<>();
+       for (College college : all) {
+           String name = Optional.ofNullable(college.getName()).orElse("").toLowerCase();
+           String shortName = Optional.ofNullable(college.getShortName()).orElse("").toLowerCase();
+           String combined = (name + " " + shortName).trim();
+           boolean matched = false;
+           if (!name.isBlank() && (normalizedQuery.contains(name) || name.contains(normalizedQuery))) {
+               matched = true;
+           }
+           if (!matched && !shortName.isBlank() && (normalizedQuery.contains(shortName) || shortName.contains(normalizedQuery))) {
+               matched = true;
+           }
+           if (!matched) {
+               for (String term : terms) {
+                   if ((!name.isBlank() && name.contains(term)) || (!shortName.isBlank() && shortName.contains(term)) || (!combined.isBlank() && combined.contains(term))) {
+                       matched = true;
+                       break;
+                   }
+               }
+           }
+           if (matched) {
+               results.add(college);
+           }
+       }
+       return results;
+   }
+ 
+   private String buildCollegeContext(College c) {
+       String location = c.getCity() != null && !c.getCity().isBlank() ? c.getCity() : c.getLocation();
+       String region = location == null ? "" : location + (c.getState() != null && !c.getState().isBlank() ? ", " + c.getState() : "");
+       String fees = (c.getMinFee() == null ? "N/A" : String.format("%.0f", c.getMinFee())) + " - " + (c.getMaxFee() == null ? "N/A" : String.format("%.0f", c.getMaxFee()));
+       String cutoff = c.getCutoff() == null ? "N/A" : String.format("%.1f", c.getCutoff());
+       String placement = c.getPlacementPercentage() == null ? "N/A" : String.format("%.0f%%", c.getPlacementPercentage());
+       String avgPackage = c.getAvgPackage() == null ? "N/A" : String.format("%.2f", c.getAvgPackage());
+       String highestPackage = c.getHighestPackage() == null ? "N/A" : String.format("%.2f", c.getHighestPackage());
+       String facilities = c.getFacilities() == null ? "N/A" : c.getFacilities().replaceAll("\\s+", " ");
+       String description = c.getDescription() == null ? "N/A" : c.getDescription().replaceAll("\\s+", " ");
+       String eligibility = c.getEligibilityCriteria() == null ? "N/A" : c.getEligibilityCriteria().replaceAll("\\s+", " ");
+       String recruiters = c.getTopRecruiters() == null ? "N/A" : c.getTopRecruiters().replaceAll("\\s+", " ");
+       return String.format("- %s | Location: %s | Type: %s | Category: %s | Cutoff: %s | Fees: %s | Placement: %s | Accreditation: %s | AvgPackage: %s | HighestPackage: %s | Eligibility: %s | TopRecruiters: %s | Description: %s | Facilities: %s",
+               c.getName(),
+               region.isBlank() ? "N/A" : region,
+               Optional.ofNullable(c.getType()).orElse("N/A"),
+               Optional.ofNullable(c.getCategory()).orElse("N/A"),
+               cutoff,
+               fees,
+               placement,
+               Optional.ofNullable(c.getAccreditation()).orElse("N/A"),
+               avgPackage,
+               highestPackage,
+               eligibility,
+               recruiters,
+               description,
+               facilities);
+   }
+ 
+   private boolean matchesPreferences(College college, String preferences, String query) {
+       if ((preferences == null || preferences.isBlank()) && (query == null || query.isBlank())) return false;
+       String text = Stream.of(
+                       college.getName(),
+                       college.getShortName(),
+                       college.getCategory(),
+                       college.getType(),
+                       college.getLocation(),
+                       college.getCity(),
+                       college.getState(),
+                       college.getDescription(),
+                       college.getFacilities(),
+                       college.getAccreditation(),
+                       college.getEligibilityCriteria())
+               .filter(Objects::nonNull)
+               .map(String::toLowerCase)
+               .collect(Collectors.joining(" "));
+ 
+       if (!preferences.isBlank()) {
+           for (String token : preferences.split("\\W+")) {
+               if (!token.isBlank() && text.contains(token)) return true;
+           }
+       }
+       if (!query.isBlank()) {
+           for (String token : query.split("\\W+")) {
+               if (!token.isBlank() && text.contains(token)) return true;
+           }
+       }
+       return false;
+   }
 }

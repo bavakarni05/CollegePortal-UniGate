@@ -25,11 +25,11 @@ export default function CourseAssistantPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const text = await res.text();
       let j;
       try {
-        j = text ? JSON.parse(text) : null;
+        j = await res.json();
       } catch (parseErr) {
+        const text = await res.text();
         throw new Error(`Unexpected server response: ${text || res.statusText}`);
       }
       if (!j) {
@@ -39,8 +39,9 @@ export default function CourseAssistantPage() {
         const ans = j.answer || 'No answer returned';
         setMessages(prev => [...prev, { role: 'assistant', text: ans }]);
       } else {
-        setMessage(j.message || 'Assistant error');
-        setMessages(prev => [...prev, { role: 'assistant', text: j.message || 'Assistant error' }]);
+        const errMsg = j.message || j.error || 'Assistant error';
+        setMessage(errMsg);
+        setMessages(prev => [...prev, { role: 'assistant', text: errMsg }]);
       }
     } catch (err) {
       setMessage('Request failed: ' + err.message);
