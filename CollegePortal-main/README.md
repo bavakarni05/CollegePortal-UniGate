@@ -22,8 +22,8 @@ The frontend will run on the port shown by Vite (usually `http://localhost:5173`
    mvn spring-boot:run
    ```
 
-The backend is deployed at `https://collegebackend-7.onrender.com`.
+The backend is deployed at `https://collegeportal-unigate-backend2.onrender.com`.
 
 ## Test API
 
-Open `https://collegebackend-7.onrender.com/api/health` to verify the Spring Boot backend is running.
+Open `https://collegeportal-unigate-backend2.onrender.com/api/health` to verify the Spring Boot backend is running.
